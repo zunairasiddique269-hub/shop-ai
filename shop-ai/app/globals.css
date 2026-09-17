@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --plum: #4a1a3a;
+  --plum-deep: #341228;
+  --plum-soft: #6b3a55;
+  --gold: #c4a574;
+  --gold-light: #e8d7b8;
+  --cream: #f7f2ea;
+  --ivory: #fbf8f3;
+  --charcoal: #2c2428;
+  --muted: #6f6468;
+  --mauve: #ede4e8;
+  --mauve-soft: #f3ecef;
+  --mauve-deep: #d9cdd3;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-plum: var(--plum);
+  --color-plum-deep: var(--plum-deep);
+  --color-plum-soft: var(--plum-soft);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-cream: var(--cream);
+  --color-ivory: var(--ivory);
+  --color-charcoal: var(--charcoal);
+  --color-muted: var(--muted);
+  --color-mauve: var(--mauve);
+  --color-mauve-soft: var(--mauve-soft);
+  --color-mauve-deep: var(--mauve-deep);
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cormorant), "Times New Roman", serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ivory);
+  color: var(--charcoal);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--plum);
+  color: var(--ivory);
+}
+
+img {
+  max-width: 100%;
 }
