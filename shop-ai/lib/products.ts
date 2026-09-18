@@ -358,6 +358,16 @@ export function getProductById(id: string): Product | undefined {
   return products.find((product) => product.id === id);
 }
 
+export function getProductBySlug(slug: string): Product | undefined {
+  return products.find((product) => product.slug === slug);
+}
+
+export function getRelatedProducts(product: Product, limit = 4): Product[] {
+  return products
+    .filter((item) => item.category === product.category && item.id !== product.id)
+    .slice(0, limit);
+}
+
 export function getFeaturedProducts(): Product[] {
   return products.filter((product) => product.isFeatured);
 }

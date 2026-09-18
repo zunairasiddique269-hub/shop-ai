@@ -23,7 +23,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="group flex h-full flex-col">
       <div className="relative overflow-hidden rounded-2xl bg-mauve">
         <Link
-          href={`/shop?q=${encodeURIComponent(product.name)}`}
+          href={`/product/${product.slug}`}
           className="relative block aspect-[3/4] overflow-hidden"
         >
           <Image
@@ -40,7 +40,7 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="absolute left-3 top-3 flex flex-col gap-2">
           {product.isNew ? <Badge tone="ivory">New</Badge> : null}
-          {discount ? <Badge tone="gold">{discount}% off</Badge> : null}
+          {discount ? <Badge tone="gold">{`${discount}% off`}</Badge> : null}
           {product.isSoldOut ? <Badge tone="sold">Sold out</Badge> : null}
         </div>
 
@@ -63,9 +63,7 @@ export function ProductCard({ product }: { product: Product }) {
           {categoryNames[product.category]}
         </p>
         <h3 className="mt-1 font-display text-2xl leading-tight text-charcoal">
-          <Link href={`/shop?q=${encodeURIComponent(product.name)}`}>
-            {product.name}
-          </Link>
+          <Link href={`/product/${product.slug}`}>{product.name}</Link>
         </h3>
 
         <div className="mt-2 flex items-center gap-2 text-gold" aria-label={`${product.rating} out of 5`}>
