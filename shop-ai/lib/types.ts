@@ -37,3 +37,34 @@ export type CartItem = {
   productId: string;
   quantity: number;
 };
+
+export type PaymentMethod = "cod" | "bank-transfer";
+
+export type OrderItem = {
+  productId: string;
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+};
+
+export type Order = {
+  orderNumber: string;
+  createdAt: string;
+  customer: {
+    fullName: string;
+    email: string;
+    phone: string;
+  };
+  shippingAddress: {
+    address: string;
+    city: string;
+    area: string;
+    postalCode: string;
+  };
+  paymentMethod: PaymentMethod;
+  items: OrderItem[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+};

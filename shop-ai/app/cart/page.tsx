@@ -13,7 +13,7 @@ export default function CartPage() {
       <PageHeader
         eyebrow="Your selection"
         title="Bag"
-        description="Quantities are stored on this device. Checkout is reserved for a later phase."
+        description="Review your pieces, then continue to a simple, secure checkout."
       />
       <Container className="py-12 sm:py-16">
         <CartView />

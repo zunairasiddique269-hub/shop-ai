@@ -18,6 +18,7 @@ type StoreContextValue = {
   addToCart: (productId: string, quantity?: number) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
+  clearCart: () => void;
   toggleWishlist: (productId: string) => void;
   isWishlisted: (productId: string) => boolean;
   cartProducts: Array<{ product: Product; quantity: number }>;
@@ -93,28 +94,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addToCart = useCallback((productId: string, quantity = 1) => {
     const product = products.find((item) => item.id === productId);
-    if (!product || product.isSoldOut) return;
+    if (!product || product.isSoldOut || product.stock <= 0) return;
 
     const current = getSnapshot();
     const existing = current.cart.find((item) => item.productId === productId);
+    const nextQuantity = Math.min(
+      (existing?.quantity ?? 0) + quantity,
+      product.stock,
+    );
     const cart = existing
       ? current.cart.map((item) =>
           item.productId === productId
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: nextQuantity }
             : item,
         )
-      : [...current.cart, { productId, quantity }];
+      : [...current.cart, { productId, quantity: nextQuantity }];
     persist({ ...current, cart });
   }, []);
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {
     const current = getSnapshot();
-    const cart =
-      quantity <= 0
-        ? current.cart.filter((item) => item.productId !== productId)
-        : current.cart.map((item) =>
-            item.productId === productId ? { ...item, quantity } : item,
-          );
+
+    if (quantity <= 0) {
+      persist({
+        ...current,
+        cart: current.cart.filter((item) => item.productId !== productId),
+      });
+      return;
+    }
+
+    const product = products.find((item) => item.id === productId);
+    const clamped = product ? Math.min(quantity, Math.max(product.stock, 1)) : quantity;
+    const cart = current.cart.map((item) =>
+      item.productId === productId ? { ...item, quantity: clamped } : item,
+    );
     persist({ ...current, cart });
   }, []);
 
@@ -124,6 +137,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...current,
       cart: current.cart.filter((item) => item.productId !== productId),
     });
+  }, []);
+
+  const clearCart = useCallback(() => {
+    const current = getSnapshot();
+    persist({ ...current, cart: [] });
   }, []);
 
   const toggleWishlist = useCallback((productId: string) => {
@@ -157,6 +175,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addToCart,
       updateQuantity,
       removeFromCart,
+      clearCart,
       toggleWishlist,
       isWishlisted,
       cartProducts,
@@ -171,6 +190,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [
     addToCart,
     cart,
+    clearCart,
     isWishlisted,
     removeFromCart,
     toggleWishlist,
