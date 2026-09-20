@@ -5,9 +5,9 @@ import { ProductGrid } from "@/components/product/ProductGrid";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import {
+  getAllProducts,
   getProductBySlug,
   getRelatedProducts,
-  products,
 } from "@/lib/products";
 import { categoryNames } from "@/lib/categories";
 
@@ -15,7 +15,8 @@ type ProductPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const products = await getAllProducts();
   return products.map((product) => ({ slug: product.slug }));
 }
 
@@ -23,7 +24,7 @@ export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) {
     return { title: "Product not found" };
@@ -37,13 +38,13 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) {
     notFound();
   }
 
-  const related = getRelatedProducts(product);
+  const related = await getRelatedProducts(product);
 
   return (
     <Container className="py-12 sm:py-16">

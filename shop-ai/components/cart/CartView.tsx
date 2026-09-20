@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useStore } from "@/context/StoreProvider";
-import { categoryNames } from "@/lib/categories";
+import { categoryNames } from "@/lib/category-labels";
 import { formatPrice, getDiscountPercent } from "@/lib/format";
 import {
   amountToFreeShipping,

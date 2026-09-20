@@ -1,9 +1,5 @@
-"use client";
-
-import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
-import { getLastOrder } from "@/lib/orders";
 import { formatPrice } from "@/lib/format";
 import type { Order } from "@/lib/types";
 
@@ -12,16 +8,11 @@ const paymentMethodLabels: Record<Order["paymentMethod"], string> = {
   "bank-transfer": "Bank Transfer",
 };
 
-export function OrderConfirmation() {
-  const [order] = useState<Order | null | undefined>(() =>
-    typeof window === "undefined" ? undefined : getLastOrder(),
-  );
-
-  // Avoid a flash of the "no order" state while localStorage is read.
-  if (order === undefined) {
-    return null;
-  }
-
+// Presentational only — the order is now fetched from the database by
+// app/order-confirmation/page.tsx (a Server Component reading the
+// ?order=<orderNumber> query string) and passed in as a prop, rather than
+// this component reading localStorage itself.
+export function OrderConfirmation({ order }: { order: Order | undefined }) {
   if (!order) {
     return (
       <div className="rounded-3xl border border-dashed border-mauve-deep bg-mauve-soft px-6 py-20 text-center">

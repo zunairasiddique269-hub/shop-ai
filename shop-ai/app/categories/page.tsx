@@ -1,14 +1,15 @@
 import { CategoryCard } from "@/components/home/CategoryCard";
 import { Container } from "@/components/ui/Container";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { categories } from "@/lib/categories";
+import { getCategories } from "@/lib/categories";
 
 export const metadata = {
   title: "Categories",
   description: "Explore ShopAI categories across women, men, accessories, footwear, beauty, and home.",
 };
 
-export default function CategoriesPage() {
+export default async function CategoriesPage() {
+  const categories = await getCategories();
   return (
     <>
       <PageHeader

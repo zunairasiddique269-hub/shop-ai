@@ -9,7 +9,7 @@ import { HeartIcon, ShieldIcon, StarIcon, TruckIcon } from "@/components/ui/Icon
 import { useStore } from "@/context/StoreProvider";
 import { cn } from "@/lib/cn";
 import { formatPrice, getDiscountPercent } from "@/lib/format";
-import { categoryNames } from "@/lib/categories";
+import { categoryNames } from "@/lib/category-labels";
 import type { Product } from "@/lib/types";
 
 export function ProductDetail({ product }: { product: Product }) {

@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useStore } from "@/context/StoreProvider";
 import { formatPrice } from "@/lib/format";
-import { generateOrderNumber, saveOrder } from "@/lib/orders";
+import { placeOrder } from "@/lib/orders";
 import { calculateOrderTotals } from "@/lib/shipping";
-import type { Order, OrderItem, PaymentMethod } from "@/lib/types";
+import type { OrderItem, PaymentMethod } from "@/lib/types";
 
 type FormState = {
   fullName: string;
@@ -77,6 +77,7 @@ export function CheckoutForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (cartProducts.length === 0) {
     return (
@@ -109,6 +110,7 @@ export function CheckoutForm() {
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
+    setSubmitError(null);
     setSubmitting(true);
 
     const items: OrderItem[] = cartProducts.map(({ product, quantity }) => ({
@@ -119,9 +121,7 @@ export function CheckoutForm() {
       quantity,
     }));
 
-    const order: Order = {
-      orderNumber: generateOrderNumber(),
-      createdAt: new Date().toISOString(),
+    placeOrder({
       customer: {
         fullName: form.fullName.trim(),
         email: form.email.trim(),
@@ -138,11 +138,19 @@ export function CheckoutForm() {
       subtotal,
       shipping,
       total,
-    };
-
-    saveOrder(order);
-    clearCart();
-    router.push("/order-confirmation");
+    })
+      .then((order) => {
+        clearCart();
+        router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}`);
+      })
+      .catch((error: unknown) => {
+        setSubmitting(false);
+        setSubmitError(
+          error instanceof Error
+            ? error.message
+            : "We couldn't place your order. Please try again.",
+        );
+      });
   }
 
   return (
@@ -308,6 +316,10 @@ export function CheckoutForm() {
           >
             {submitting ? "Placing order…" : "Place order"}
           </Button>
+
+          {submitError ? (
+            <p className="mt-3 text-center text-xs text-red-600">{submitError}</p>
+          ) : null}
         </div>
       </aside>
     </form>

@@ -67,9 +67,13 @@ The project uses a reusable component-based architecture.
 shop-ai/
 ├── app/
 │   ├── about/
+│   ├── api/                # Route handlers: products, categories, orders
 │   ├── cart/
 │   ├── categories/
+│   ├── checkout/
 │   ├── login/
+│   ├── order-confirmation/
+│   ├── product/[slug]/
 │   ├── register/
 │   ├── sale/
 │   ├── shop/
@@ -82,6 +86,7 @@ shop-ai/
 │   ├── account/
 │   ├── brand/
 │   ├── cart/
+│   ├── checkout/
 │   ├── home/
 │   ├── layout/
 │   ├── product/
@@ -89,15 +94,30 @@ shop-ai/
 │   └── ui/
 │
 ├── context/
-│   └── StoreProvider.tsx
+│   └── StoreProvider.tsx   # Client-side cart/wishlist (localStorage) —
+│                           # fetches the product catalog from /api/products
 │
 ├── lib/
-│   ├── categories.ts
+│   ├── db/
+│   │   ├── client.ts       # Drizzle/Postgres connection (server-only)
+│   │   ├── schema.ts       # Table definitions
+│   │   ├── seed-data.ts    # The original 18 products / 6 categories
+│   │   ├── seed.ts         # Seed script (npm run db:seed)
+│   │   ├── migrate.ts      # Migration runner (npm run db:migrate)
+│   │   └── orders.ts       # Server-side order repository
+│   ├── categories.ts       # DB-backed category functions (server-only)
+│   ├── category-labels.ts  # Client-safe category label map
 │   ├── cn.ts
 │   ├── format.ts
 │   ├── nav.ts
-│   ├── products.ts
+│   ├── orders.ts           # Client-safe "place order" API wrapper
+│   ├── products.ts         # DB-backed product functions (server-only)
+│   ├── shipping.ts
 │   └── types.ts
+│
+├── drizzle/                 # Generated SQL migrations (committed)
+├── drizzle.config.ts
+├── .env.example
 │
 ├── public/
 │   └── brand/
@@ -109,14 +129,52 @@ shop-ai/
 
 ## 🛠️ Tech Stack
 
-* **Next.js**
+* **Next.js** (App Router)
 * **React**
 * **TypeScript**
 * **Tailwind CSS**
-* **Next.js App Router**
-* **React Context**
+* **PostgreSQL** — relational database for products, categories, and orders
+* **Drizzle ORM** — type-safe schema, queries, and migrations
+* **React Context** — client-side cart/wishlist state
 * **Lucide / custom UI icons**
 * **Git & GitHub**
+
+---
+
+## 🗄️ Backend & Database
+
+Products, categories, and orders are persisted in **PostgreSQL** via **Drizzle ORM**. The cart and wishlist remain client-side (`localStorage`), unchanged from earlier stages.
+
+**Why Postgres + Drizzle:** a relational database is a natural fit for products/categories/orders' fixed, related shape, and both are widely supported by managed hosts (Neon, Supabase, Vercel Postgres, Railway, RDS) with a straightforward path from local development to production. Drizzle was chosen over Prisma for this project specifically because it has no separate native "engine" binary to download — it talks to Postgres directly through the `postgres` driver — which also keeps the toolchain lighter for serverless/edge deployment.
+
+### Setup
+
+1. Provision a Postgres database (locally, or with a managed provider).
+2. Copy the environment template and fill in your connection string:
+   ```bash
+   cp .env.example .env
+   # then edit .env and set DATABASE_URL
+   ```
+3. Install dependencies, then generate/apply the schema and seed the original catalog:
+   ```bash
+   npm install
+   npm run db:generate   # generate SQL migrations from lib/db/schema.ts (only needed after a schema change)
+   npm run db:migrate    # apply migrations to your database
+   npm run db:seed       # load the 18 products / 6 categories
+   ```
+4. `npm run dev` as usual.
+
+`npm run db:studio` opens Drizzle Studio, a local GUI for browsing/editing the database.
+
+### Data flow
+
+* Server Components / route handlers read and write the database directly through `lib/products.ts`, `lib/categories.ts`, and `lib/db/orders.ts` — no data lives in hardcoded arrays anymore.
+* The client-side cart (`context/StoreProvider.tsx`) can't query the database directly, so it fetches the catalog once from `GET /api/products` and caches it in memory.
+* Checkout (`components/checkout/CheckoutForm.tsx`) submits to `POST /api/orders`, which persists the order and its line items in a single transaction. The confirmation page reads the order back from the database by order number (`?order=...`), rather than from `localStorage`.
+
+### API routes
+
+`/api/products`, `/api/products/[id]`, `/api/categories`, `/api/categories/[slug]`, `/api/orders`, `/api/orders/[orderNumber]` — read endpoints are used by the storefront today; the write endpoints (create/update/delete) are foundation for the upcoming Admin Dashboard and are **not yet authentication-protected**.
 
 ---
 
@@ -179,17 +237,16 @@ Planned:
 * Persistent user data
 * Account management
 
-### Stage 5 — Backend, Orders & Checkout
+### Stage 5 — Backend, Orders & Checkout 🔄
 
-Planned:
-
-* Database integration
-* Product persistence
-* Cart persistence
-* Order system
-* Checkout flow
-* Backend APIs
-* Payment integration
+* Database integration ✅ (PostgreSQL + Drizzle ORM)
+* Product/category persistence ✅
+* Order system (server-side persistence) ✅
+* Checkout flow ✅
+* Backend APIs (products/categories/orders foundation) ✅
+* Admin authentication & authorization — planned
+* Admin dashboard UI — planned
+* Payment integration — planned
 
 ### Stage 6 — AI Shopping Features
 
@@ -250,11 +307,9 @@ Potential applications include:
 
 ## 📌 Current Status
 
-**Stage 1 — Customer Interface: Completed ✅**
+**Stage 1 (Customer Interface), product detail pages, cart/checkout, and the backend/database foundation are complete.**
 
-The current version contains the customer-facing storefront and a development product catalog using realistic dummy products.
-
-Further stages will progressively add the backend, management systems, authentication, ordering capabilities, and AI-powered functionality.
+The storefront reads products, categories, and orders from a real PostgreSQL database instead of hardcoded arrays or `localStorage`. See **Backend & Database** above for setup and architecture. Admin authentication and the Admin Dashboard UI are the next planned stage.
 
 ---
 

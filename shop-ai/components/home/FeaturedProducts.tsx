@@ -4,8 +4,8 @@ import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { getFeaturedProducts } from "@/lib/products";
 
-export function FeaturedProducts() {
-  const products = getFeaturedProducts();
+export async function FeaturedProducts() {
+  const products = await getFeaturedProducts();
 
   return (
     <section className="bg-mauve-soft/60 py-20 sm:py-24">

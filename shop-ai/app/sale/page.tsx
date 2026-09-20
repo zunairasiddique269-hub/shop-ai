@@ -8,7 +8,8 @@ export const metadata = {
   description: "Reduced ShopAI pieces from the current seasonal edit.",
 };
 
-export default function SalePage() {
+export default async function SalePage() {
+  const saleProducts = await getSaleProducts();
   return (
     <>
       <PageHeader
@@ -17,7 +18,7 @@ export default function SalePage() {
         description="Selected silhouettes with visible original prices and discount badges. Fulfillment is not live in this phase."
       />
       <Container className="py-12 sm:py-16">
-        <ProductGrid products={getSaleProducts()} />
+        <ProductGrid products={saleProducts} />
       </Container>
     </>
   );

@@ -2,10 +2,11 @@ import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { SparkleIcon } from "@/components/ui/Icons";
-import { products } from "@/lib/products";
+import { getAllProducts } from "@/lib/products";
 
-export function AISection() {
-  const preview = products.slice(0, 3);
+export async function AISection() {
+  const allProducts = await getAllProducts();
+  const preview = allProducts.slice(0, 3);
 
   return (
     <section id="style-studio" className="scroll-mt-24 py-20 sm:py-24">

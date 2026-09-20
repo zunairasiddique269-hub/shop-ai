@@ -1,18 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { CloseIcon } from "@/components/ui/Icons";
-import { categories } from "@/lib/categories";
 import { cn } from "@/lib/cn";
-import {
-  filterProducts,
-  products,
-  type PriceFilter,
-  type ProductSort,
-} from "@/lib/products";
-import type { CategorySlug } from "@/lib/types";
+import type { PriceFilter, ProductSort } from "@/lib/products";
+import type { Category, CategorySlug, Product } from "@/lib/types";
 
 const priceOptions: { value: PriceFilter; label: string }[] = [
   { value: "all", label: "Any price" },
@@ -29,13 +23,18 @@ const sortOptions: { value: ProductSort; label: string }[] = [
   { value: "rating", label: "Highest rated" },
 ];
 
-export function ShopCatalog() {
-  const params = useSearchParams();
-  const q = params.get("q") ?? "";
-  return <ShopCatalogInner key={q} />;
-}
-
-function ShopCatalogInner() {
+// Filtering/sorting now happens server-side in app/shop/page.tsx (the
+// product catalog lives in the database, not an in-memory array this client
+// component could filter directly). This component stays responsible for
+// the URL-param-driven filter UI; each interaction updates the URL, which
+// re-runs the Server Component and streams down fresh `results`.
+export function ShopCatalog({
+  results,
+  categories,
+}: {
+  results: Product[];
+  categories: Category[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -46,17 +45,6 @@ function ShopCatalogInner() {
   const price = (params.get("price") ?? "all") as PriceFilter;
   const sort = (params.get("sort") ?? "featured") as ProductSort;
   const [searchDraft, setSearchDraft] = useState(search);
-
-  const results = useMemo(
-    () =>
-      filterProducts(products, {
-        search: searchDraft,
-        category,
-        price,
-        sort,
-      }),
-    [searchDraft, category, price, sort],
-  );
 
   function update(next: Record<string, string>) {
     const query = new URLSearchParams(params.toString());
@@ -79,6 +67,7 @@ function ShopCatalogInner() {
     category,
     price,
     onUpdate: update,
+    categories,
   };
 
   return (
@@ -154,6 +143,7 @@ function FilterFields({
   category,
   price,
   onUpdate,
+  categories,
 }: {
   searchId: string;
   searchDraft: string;
@@ -162,6 +152,7 @@ function FilterFields({
   category: CategorySlug | "all";
   price: PriceFilter;
   onUpdate: (next: Record<string, string>) => void;
+  categories: Category[];
 }) {
   return (
     <div className="space-y-8">

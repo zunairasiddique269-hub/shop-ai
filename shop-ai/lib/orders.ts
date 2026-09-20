@@ -1,30 +1,40 @@
-import type { Order } from "./types";
+import type { Order, PaymentMethod } from "./types";
 
-// Temporary client-side order storage. This key is the seam where a real
-// backend (order API + database) would plug in later — the rest of the app
-// only ever calls these two functions, never localStorage directly.
-const LAST_ORDER_KEY = "shopai-last-order";
+// Client-safe. Unlike lib/db/orders.ts, this file has no database import —
+// it's the thin fetch wrapper CheckoutForm (a "use client" component) calls
+// to persist an order via the /api/orders route handler, replacing the
+// previous localStorage-only persistence.
 
-export function generateOrderNumber(): string {
-  const datePart = Date.now().toString(36).toUpperCase();
-  const randomPart = Math.random().toString(36).slice(2, 7).toUpperCase();
-  return `SHOPAI-${datePart}-${randomPart}`;
-}
+export type PlaceOrderInput = {
+  customer: { fullName: string; email: string; phone: string };
+  shippingAddress: {
+    address: string;
+    city: string;
+    area: string;
+    postalCode: string;
+  };
+  paymentMethod: PaymentMethod;
+  items: { productId: string; name: string; image: string; price: number; quantity: number }[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+};
 
-export function saveOrder(order: Order) {
-  try {
-    window.localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(order));
-  } catch {
-    // Storage can fail (private browsing, quota, etc). The order flow still
-    // completes in-memory for this session; nothing else depends on it.
+export class PlaceOrderError extends Error {}
+
+export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    throw new PlaceOrderError(
+      "We couldn't place your order. Please check your details and try again.",
+    );
   }
-}
 
-export function getLastOrder(): Order | null {
-  try {
-    const raw = window.localStorage.getItem(LAST_ORDER_KEY);
-    return raw ? (JSON.parse(raw) as Order) : null;
-  } catch {
-    return null;
-  }
+  const data = (await response.json()) as { order: Order };
+  return data.order;
 }

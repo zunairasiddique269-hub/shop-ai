@@ -3,7 +3,8 @@ import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { getNewArrivals } from "@/lib/products";
 
-export function NewArrivals() {
+export async function NewArrivals() {
+  const newArrivals = await getNewArrivals();
   return (
     <section className="bg-cream py-20 sm:py-24">
       <Container>
@@ -13,7 +14,7 @@ export function NewArrivals() {
           description="Fresh silhouettes from the latest atelier drop, ready to live in your wardrobe."
         />
         <div className="mt-12">
-          <ProductGrid products={getNewArrivals()} />
+          <ProductGrid products={newArrivals} />
         </div>
       </Container>
     </section>

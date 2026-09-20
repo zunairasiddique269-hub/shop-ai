@@ -8,15 +8,14 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { products } from "@/lib/products";
 import type { CartItem, Product } from "@/lib/types";
 
 type StoreContextValue = {
   cart: CartItem[];
   wishlist: string[];
   cartCount: number;
-  addToCart: (productId: string, quantity?: number) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (productId: string, quantity?: number) => Promise<void>;
+  updateQuantity: (productId: string, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
   toggleWishlist: (productId: string) => void;
@@ -34,12 +33,14 @@ const WISHLIST_KEY = "shopai-wishlist";
 type Snapshot = {
   cart: CartItem[];
   wishlist: string[];
+  catalog: Product[];
 };
 
-const emptySnapshot: Snapshot = { cart: [], wishlist: [] };
+const emptySnapshot: Snapshot = { cart: [], wishlist: [], catalog: [] };
 const listeners = new Set<() => void>();
 let snapshot: Snapshot = emptySnapshot;
 let clientReady = false;
+let catalogPromise: Promise<Product[]> | null = null;
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -66,12 +67,41 @@ function hydrate() {
   snapshot = {
     cart: readJson<CartItem[]>(CART_KEY, []),
     wishlist: readJson<string[]>(WISHLIST_KEY, []),
+    catalog: [],
   };
   clientReady = true;
 }
 
+// Product data now lives in the database (see lib/products.ts), which a
+// "use client" file like this one cannot query directly. This fetches the
+// catalog from /api/products once, caches the in-flight promise so bursts
+// of calls (e.g. rapid Add to Cart clicks) don't fire duplicate requests,
+// and updates the shared snapshot when it resolves so every subscribed
+// component re-renders with real product data.
+function loadCatalog(): Promise<Product[]> {
+  if (snapshot.catalog.length > 0) return Promise.resolve(snapshot.catalog);
+  if (!catalogPromise) {
+    catalogPromise = fetch("/api/products")
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load products");
+        return response.json() as Promise<{ products: Product[] }>;
+      })
+      .then(({ products }) => {
+        snapshot = { ...snapshot, catalog: products };
+        emit();
+        return products;
+      })
+      .catch(() => {
+        catalogPromise = null; // allow a retry on the next call
+        return [];
+      });
+  }
+  return catalogPromise;
+}
+
 function subscribe(listener: () => void) {
   hydrate();
+  loadCatalog();
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
@@ -86,13 +116,14 @@ function getServerSnapshot() {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const { cart, wishlist } = useSyncExternalStore(
+  const { cart, wishlist, catalog } = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
   );
 
-  const addToCart = useCallback((productId: string, quantity = 1) => {
+  const addToCart = useCallback(async (productId: string, quantity = 1) => {
+    const products = await loadCatalog();
     const product = products.find((item) => item.id === productId);
     if (!product || product.isSoldOut || product.stock <= 0) return;
 
@@ -112,10 +143,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     persist({ ...current, cart });
   }, []);
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
-    const current = getSnapshot();
-
+  const updateQuantity = useCallback(async (productId: string, quantity: number) => {
     if (quantity <= 0) {
+      const current = getSnapshot();
       persist({
         ...current,
         cart: current.cart.filter((item) => item.productId !== productId),
@@ -123,8 +153,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const products = await loadCatalog();
     const product = products.find((item) => item.id === productId);
     const clamped = product ? Math.min(quantity, Math.max(product.stock, 1)) : quantity;
+
+    const current = getSnapshot();
     const cart = current.cart.map((item) =>
       item.productId === productId ? { ...item, quantity: clamped } : item,
     );
@@ -160,7 +193,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => {
     const cartProducts = cart
       .map((item) => {
-        const product = products.find((entry) => entry.id === item.productId);
+        const product = catalog.find((entry) => entry.id === item.productId);
         if (!product) return null;
         return { product, quantity: item.quantity };
       })
@@ -179,7 +212,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleWishlist,
       isWishlisted,
       cartProducts,
-      wishlistProducts: products.filter((product) =>
+      wishlistProducts: catalog.filter((product) =>
         wishlist.includes(product.id),
       ),
       cartTotal: cartProducts.reduce(
@@ -190,6 +223,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [
     addToCart,
     cart,
+    catalog,
     clearCart,
     isWishlisted,
     removeFromCart,

@@ -40,6 +40,8 @@ export type CartItem = {
 
 export type PaymentMethod = "cod" | "bank-transfer";
 
+export type OrderStatus = "pending" | "processing" | "fulfilled" | "cancelled";
+
 export type OrderItem = {
   productId: string;
   name: string;
@@ -63,6 +65,8 @@ export type Order = {
     postalCode: string;
   };
   paymentMethod: PaymentMethod;
+  status: OrderStatus;
+  trackingId?: string;
   items: OrderItem[];
   subtotal: number;
   shipping: number;
