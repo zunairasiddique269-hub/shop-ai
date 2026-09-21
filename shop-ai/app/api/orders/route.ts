@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createOrder, getAllOrders } from "@/lib/db/orders";
+import { requireAdminApi } from "@/lib/auth/dal";
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -68,8 +69,13 @@ export async function POST(request: Request) {
 }
 
 // GET /api/orders
-// Foundation for the Admin Dashboard's order list. Not yet auth-protected.
+// Admin-only — this returns every order, including every customer's name,
+// email, phone, and shipping address, so it must never be public. Used by
+// the Admin Dashboard's order list and overview stats.
 export async function GET() {
+  const auth = await requireAdminApi();
+  if ("response" in auth) return auth.response;
+
   const orders = await getAllOrders();
   return NextResponse.json({ orders });
 }

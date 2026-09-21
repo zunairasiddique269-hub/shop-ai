@@ -67,7 +67,15 @@ The project uses a reusable component-based architecture.
 shop-ai/
 ├── app/
 │   ├── about/
-│   ├── api/                # Route handlers: products, categories, orders
+│   ├── admin/               # Admin Dashboard (protected)
+│   │   ├── login/           # Admin sign-in page
+│   │   └── (dashboard)/     # Everything behind admin auth
+│   │       ├── layout.tsx   # Sidebar shell + session check
+│   │       ├── page.tsx     # Overview / stats
+│   │       ├── products/    # List, add, edit
+│   │       └── orders/      # List + status/tracking updates
+│   ├── api/
+│   │   └── admin/           # Admin login/logout routes
 │   ├── cart/
 │   ├── categories/
 │   ├── checkout/
@@ -84,6 +92,7 @@ shop-ai/
 │
 ├── components/
 │   ├── account/
+│   ├── admin/               # Admin dashboard UI (sidebar, tables, forms)
 │   ├── brand/
 │   ├── cart/
 │   ├── checkout/
@@ -98,13 +107,21 @@ shop-ai/
 │                           # fetches the product catalog from /api/products
 │
 ├── lib/
+│   ├── admin/
+│   │   └── stats.ts         # Dashboard statistics (real DB queries)
+│   ├── auth/
+│   │   ├── password.ts      # bcrypt hashing
+│   │   ├── session.ts       # Signed session tokens (jose)
+│   │   └── dal.ts           # Session checks for pages & API routes
 │   ├── db/
-│   │   ├── client.ts       # Drizzle/Postgres connection (server-only)
-│   │   ├── schema.ts       # Table definitions
-│   │   ├── seed-data.ts    # The original 18 products / 6 categories
-│   │   ├── seed.ts         # Seed script (npm run db:seed)
-│   │   ├── migrate.ts      # Migration runner (npm run db:migrate)
-│   │   └── orders.ts       # Server-side order repository
+│   │   ├── client.ts        # Drizzle/Postgres connection (server-only)
+│   │   ├── schema.ts        # Table definitions
+│   │   ├── admin.ts         # Admin user queries
+│   │   ├── seed-data.ts     # The original 18 products / 6 categories
+│   │   ├── seed.ts          # Seed script (npm run db:seed)
+│   │   ├── seed-admin.ts    # Admin account seed script (npm run db:seed-admin)
+│   │   ├── migrate.ts       # Migration runner (npm run db:migrate)
+│   │   └── orders.ts        # Server-side order repository
 │   ├── categories.ts       # DB-backed category functions (server-only)
 │   ├── category-labels.ts  # Client-safe category label map
 │   ├── cn.ts
@@ -117,6 +134,7 @@ shop-ai/
 │
 ├── drizzle/                 # Generated SQL migrations (committed)
 ├── drizzle.config.ts
+├── proxy.ts                 # Optimistic /admin route protection
 ├── .env.example
 │
 ├── public/
@@ -133,8 +151,9 @@ shop-ai/
 * **React**
 * **TypeScript**
 * **Tailwind CSS**
-* **PostgreSQL** — relational database for products, categories, and orders
+* **PostgreSQL** — relational database for products, categories, orders, and admin accounts
 * **Drizzle ORM** — type-safe schema, queries, and migrations
+* **bcrypt** + signed session cookies (**jose**) — admin authentication
 * **React Context** — client-side cart/wishlist state
 * **Lucide / custom UI icons**
 * **Git & GitHub**
@@ -161,6 +180,7 @@ Products, categories, and orders are persisted in **PostgreSQL** via **Drizzle O
    npm run db:generate   # generate SQL migrations from lib/db/schema.ts (only needed after a schema change)
    npm run db:migrate    # apply migrations to your database
    npm run db:seed       # load the 18 products / 6 categories
+   npm run db:seed-admin # create your admin account — see "Admin Dashboard & Authentication" below
    ```
 4. `npm run dev` as usual.
 
@@ -174,7 +194,50 @@ Products, categories, and orders are persisted in **PostgreSQL** via **Drizzle O
 
 ### API routes
 
-`/api/products`, `/api/products/[id]`, `/api/categories`, `/api/categories/[slug]`, `/api/orders`, `/api/orders/[orderNumber]` — read endpoints are used by the storefront today; the write endpoints (create/update/delete) are foundation for the upcoming Admin Dashboard and are **not yet authentication-protected**.
+`/api/products`, `/api/products/[id]`, `/api/categories`, `/api/categories/[slug]`, `/api/orders`, `/api/orders/[orderNumber]` — the `GET` endpoints used by the storefront (product/category browsing, catalog loading) remain public. Every write operation (create/update/delete on products and categories, listing all orders, and updating an order's status/tracking) now requires an authenticated admin session, enforced on the server — see **Admin Dashboard & Authentication** below.
+
+---
+
+## 🔐 Admin Dashboard & Authentication
+
+Stage 4B adds a real, database-backed admin area for managing the store.
+
+### How it works
+
+* **Passwords** are hashed with `bcrypt` before they ever reach the database — the plaintext password is never stored, logged, or sent back to the browser.
+* **Sessions** are signed, `httpOnly` cookies (following the pattern in Next.js's own App Router authentication guide). Signing in issues a 7-day session; logging out clears the cookie in that browser.
+* **Every admin page and every write API route checks the session on the server.** The UI also hides admin controls from logged-out visitors, but that's a convenience, not the security boundary — hitting the API routes directly without a valid session returns `401 Unauthorized`, even if you already know a product or order ID.
+* Unauthenticated visits to any `/admin/*` page redirect to `/admin/login`. Signing in redirects back to the dashboard.
+
+**Honest limitation:** sessions are stateless signed tokens, not rows in a database. That keeps the implementation simple and is a normal, secure approach for a project at this stage, but it means logging out invalidates the session only in the browser you logged out from — there's no server-side "kill switch" for a token before it naturally expires. A production system handling sensitive data at scale would typically add a server-side session store or short-lived tokens with refresh, on top of what's here.
+
+### Setting up your admin account
+
+There is no public sign-up for the admin area — you create the first (and, in this stage, only) admin account from environment variables:
+
+```bash
+cp .env.example .env
+# edit .env and set SESSION_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME
+npm run db:seed-admin
+```
+
+`SESSION_SECRET` should be a long random string (e.g. the output of `openssl rand -base64 32`) — it's what signs and verifies session cookies. `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` are only read by this one script, never shown in any UI, and re-running the script after changing `ADMIN_PASSWORD` updates that account's password. If any of these variables are missing, the script stops with a clear message telling you what to set.
+
+Then sign in at **`/admin/login`** with that email and password.
+
+### What the dashboard covers
+
+* **Overview** (`/admin`) — total products, in-stock vs. sold-out counts, products currently on sale, total orders, and pending orders — all computed live from the database, not hardcoded.
+* **Products** (`/admin/products`) — search and filter the catalog, add a product, edit any field, toggle sold-out status with one click, or delete a product (with a confirmation step). Stock, discount, and sold-out changes are reflected on the storefront immediately, since both read from the same database.
+  * Sold-out status stays coherent with stock: a product with 0 stock always shows as sold out, regardless of any manual flag. The manual "force sold out" toggle only matters while stock remains above zero (e.g. temporarily pulling a product from sale).
+  * The product form only lets you choose from categories that already exist — this stage doesn't add a separate category-management screen, in keeping with the project's existing category system.
+* **Orders** (`/admin/orders`) — view every order placed through checkout (customer details, shipping address, items, payment method) and update its status or tracking ID. This reuses the existing order database and checkout flow entirely; nothing about the customer-facing checkout changed.
+
+### Known limitations, stated plainly
+
+* There's currently no UI for creating additional admin accounts or roles beyond the one seeded via `db:seed-admin` — every admin shares the same `"admin"` role.
+* The admin product image field accepts URLs from `images.unsplash.com` only, matching the image host this project is already configured to allow (see `next.config.ts`). Fixing the handful of broken seed-data image URLs was out of scope for this stage.
+* As noted above, logging out clears the session cookie but doesn't revoke the underlying token server-side.
 
 ---
 
@@ -216,25 +279,25 @@ Planned:
 * Related products
 * Improved catalog experience
 
-### Stage 3 — Admin & Product Management
+### Stage 3 — Admin & Product Management ✅
 
-Planned:
+Completed (Stage 4B):
 
 * Admin dashboard
-* Product management
-* Inventory management
-* Order management
-* Customer management
-* Basic analytics
+* Product management (create, edit, delete)
+* Inventory management (stock, sold-out status)
+* Order management (view orders, update status/tracking)
+* Admin authentication protecting all of the above
 
-### Stage 4 — Authentication & Users
+Not in this stage: customer management and analytics beyond the dashboard's live product/order counts — see **Admin Dashboard & Authentication** above for exactly what's covered.
 
-Planned:
+### Stage 4 — Customer Authentication & Accounts
 
-* User authentication
-* Protected routes
-* Customer accounts
-* Persistent user data
+Planned. (Admin authentication is complete — see Stage 3 above. This stage is about real customer sign-in, replacing the current placeholder `/login` and `/register` pages.)
+
+* Customer authentication
+* Protected customer routes
+* Persistent customer accounts
 * Account management
 
 ### Stage 5 — Backend, Orders & Checkout 🔄
@@ -243,9 +306,9 @@ Planned:
 * Product/category persistence ✅
 * Order system (server-side persistence) ✅
 * Checkout flow ✅
-* Backend APIs (products/categories/orders foundation) ✅
-* Admin authentication & authorization — planned
-* Admin dashboard UI — planned
+* Backend APIs (products/categories/orders) ✅
+* Admin authentication & authorization ✅
+* Admin dashboard UI ✅
 * Payment integration — planned
 
 ### Stage 6 — AI Shopping Features
@@ -307,9 +370,9 @@ Potential applications include:
 
 ## 📌 Current Status
 
-**Stage 1 (Customer Interface), product detail pages, cart/checkout, and the backend/database foundation are complete.**
+**Stage 1 (Customer Interface), product detail pages, cart/checkout, the backend/database foundation, and the Admin Dashboard with admin authentication are complete.**
 
-The storefront reads products, categories, and orders from a real PostgreSQL database instead of hardcoded arrays or `localStorage`. See **Backend & Database** above for setup and architecture. Admin authentication and the Admin Dashboard UI are the next planned stage.
+The storefront reads products, categories, and orders from a real PostgreSQL database instead of hardcoded arrays or `localStorage`. Store staff can sign in at `/admin/login` to manage products, inventory, discounts, and orders through a dedicated dashboard, with every write operation enforced server-side. See **Backend & Database** and **Admin Dashboard & Authentication** above for setup and architecture. Real customer authentication (as opposed to admin authentication) is the next planned stage.
 
 ---
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { deleteCategory, getCategory, updateCategory } from "@/lib/categories";
+import { requireAdminApi } from "@/lib/auth/dal";
 
 type Params = { params: Promise<{ slug: string }> };
 
-// Foundation for Stage 4B's Admin Dashboard. Not yet auth-protected.
-
+// GET is public — category pages on the storefront read this.
 export async function GET(_request: Request, { params }: Params) {
   const { slug } = await params;
   const category = await getCategory(slug);
@@ -14,7 +14,12 @@ export async function GET(_request: Request, { params }: Params) {
   return NextResponse.json({ category });
 }
 
+// Admin-only. See app/api/categories/route.ts for why this is protected
+// even without a dedicated admin UI in Stage 4B.
 export async function PUT(request: Request, { params }: Params) {
+  const auth = await requireAdminApi();
+  if ("response" in auth) return auth.response;
+
   const { slug } = await params;
   const body = await request.json().catch(() => null);
 
@@ -30,6 +35,9 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
+  const auth = await requireAdminApi();
+  if ("response" in auth) return auth.response;
+
   const { slug } = await params;
   const deleted = await deleteCategory(slug);
   if (!deleted) {

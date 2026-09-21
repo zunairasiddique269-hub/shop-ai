@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Outfit } from "next/font/google";
-import { Footer } from "@/components/layout/Footer";
-import { Navbar } from "@/components/layout/Navbar";
+import { SiteChrome } from "@/components/layout/SiteChrome";
 import { StoreProvider } from "@/context/StoreProvider";
 import "./globals.css";
 
@@ -34,9 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col bg-ivory font-sans text-charcoal">
         <StoreProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <SiteChrome>{children}</SiteChrome>
         </StoreProvider>
       </body>
     </html>

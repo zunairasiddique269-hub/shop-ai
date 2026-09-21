@@ -158,3 +158,100 @@ export function FacebookIcon(props: IconProps) {
     </svg>
   );
 }
+
+// --- Admin dashboard icons ---
+
+export function DashboardIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13" y="3.5" width="7.5" height="4.5" rx="1.5" />
+      <rect x="13" y="10.5" width="7.5" height="10" rx="1.5" />
+      <rect x="3.5" y="13.5" width="7.5" height="7" rx="1.5" />
+    </svg>
+  );
+}
+
+export function PackageIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 3.5 4.5 7.5v9L12 20.5l7.5-4v-9L12 3.5Z" strokeLinejoin="round" />
+      <path d="M4.5 7.5 12 11.5l7.5-4" strokeLinejoin="round" />
+      <path d="M12 11.5v9" />
+    </svg>
+  );
+}
+
+export function ClipboardIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="5.5" y="4.5" width="13" height="16" rx="1.75" />
+      <path d="M9 4.5V3.75A1.75 1.75 0 0 1 10.75 2h2.5A1.75 1.75 0 0 1 15 3.75V4.5" strokeLinecap="round" />
+      <path d="M8.5 10.5h7M8.5 14h7M8.5 17.5h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function LogoutIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M14.5 8V6a2 2 0 0 0-2-2H6.5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2H12.5a2 2 0 0 0 2-2v-2" strokeLinecap="round" />
+      <path d="M9.5 12h11M17.5 8.5l3.5 3.5-3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 5.5v13M5.5 12h13" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5.5 7.5h13" strokeLinecap="round" />
+      <path d="M9.5 7.5V6a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 6v1.5" strokeLinecap="round" />
+      <path d="M7.5 7.5 8.2 19a1.5 1.5 0 0 0 1.5 1.4h4.6a1.5 1.5 0 0 0 1.5-1.4l.7-11.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.3 11v6M13.7 11v6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function PencilIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m14.5 5.5 4 4L8 20H4v-4L14.5 5.5Z" strokeLinejoin="round" />
+      <path d="m13 7 4 4" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function AlertIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 3.5 21 19H3L12 3.5Z" strokeLinejoin="round" />
+      <path d="M12 9.5v4.25" strokeLinecap="round" />
+      <circle cx="12" cy="16.75" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function ExternalLinkIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" strokeLinecap="round" />
+      <path d="M14 4.5h5.5V10M19.2 4.8l-8.7 8.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

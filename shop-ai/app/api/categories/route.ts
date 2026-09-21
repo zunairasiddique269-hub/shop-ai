@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { createCategory, getCategories } from "@/lib/categories";
+import { requireAdminApi } from "@/lib/auth/dal";
 
 export async function GET() {
   const categories = await getCategories();
   return NextResponse.json({ categories });
 }
 
-// Foundation for Stage 4B's Admin Dashboard. Not yet auth-protected.
+// Admin-only. No category-management UI ships in Stage 4B (the product
+// form only reads existing categories), but this write endpoint already
+// existed and must not be left open.
 export async function POST(request: Request) {
+  const auth = await requireAdminApi();
+  if ("response" in auth) return auth.response;
+
   const body = await request.json().catch(() => null);
 
   if (

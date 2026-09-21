@@ -100,6 +100,12 @@ export async function getSaleProducts(): Promise<Product[]> {
 
 export type NewProductInput = Omit<Product, "discount" | "isSoldOut"> & {
   discount?: number;
+  // Optional manual override so the admin can mark a product sold out even
+  // while stock remains (e.g. temporarily discontinuing it). Independent of
+  // stock — toProduct() already ORs the two together (stock <= 0 ||
+  // isSoldOut) so a product always reads as sold out once stock hits 0,
+  // regardless of this flag.
+  isSoldOut?: boolean;
 };
 
 export async function createProduct(input: NewProductInput): Promise<Product> {
@@ -121,7 +127,7 @@ export async function createProduct(input: NewProductInput): Promise<Product> {
       stock: input.stock,
       isNew: input.isNew,
       isFeatured: input.isFeatured,
-      isSoldOut: input.stock <= 0,
+      isSoldOut: input.stock <= 0 || Boolean(input.isSoldOut),
     })
     .returning();
   return toProduct(row);
