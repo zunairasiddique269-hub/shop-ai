@@ -49,13 +49,38 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// One row per placed order. Customer/shipping fields are flattened (no
-// separate customer table yet — there is no real customer auth in this
-// stage) matching lib/types.ts's Order shape.
+// Stage 5A foundation only: the table shape for real customer accounts.
+// No signup/login/session logic is wired up yet — this stage is schema
+// only, matching how adminUsers was introduced as a foundation in Stage 4B
+// before its auth logic followed in a later stage.
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// One row per placed order. Customer/shipping fields stay flattened here
+// (rather than being replaced by a join to `customers`) so an order keeps
+// its own permanent snapshot of who it was placed for — see the customerId
+// comment below for why both exist side by side.
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+
+  // Nullable: orders placed before customer accounts existed have no
+  // customer row, and guest checkout (no account) must keep working going
+  // forward too. Kept alongside the existing flattened customerFullName/
+  // customerEmail/customerPhone fields below rather than replacing them —
+  // those remain the order's permanent snapshot of who it was placed for,
+  // independent of whether the account behind customerId is later renamed
+  // or deleted.
+  customerId: integer("customer_id").references(() => customers.id, {
+    onDelete: "set null",
+  }),
 
   customerFullName: text("customer_full_name").notNull(),
   customerEmail: text("customer_email").notNull(),
