@@ -72,3 +72,57 @@ export async function verifySessionToken(
     return null;
   }
 }
+
+// --- Customer sessions ---
+//
+// A separate, parallel system from the admin session above — different
+// cookie name, different payload shape, and its own create/verify
+// functions — so a customer token can never be mistaken for (or upgraded
+// into) an admin one. Both share the same SESSION_SECRET and getSecretKey(),
+// the same signing algorithm, and the same 7-day SESSION_DURATION; nothing
+// about the admin functions above was changed to add this.
+
+export const CUSTOMER_SESSION_COOKIE = "shopai_customer_session";
+
+export type CustomerSessionPayload = {
+  customerId: number;
+  email: string;
+  name: string;
+};
+
+export async function createCustomerSessionToken(
+  payload: CustomerSessionPayload,
+): Promise<string> {
+  return new SignJWT({ ...payload } satisfies CustomerSessionPayload & JWTPayload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(SESSION_DURATION)
+    .sign(getSecretKey());
+}
+
+export async function verifyCustomerSessionToken(
+  token: string,
+): Promise<CustomerSessionPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, getSecretKey(), {
+      algorithms: ["HS256"],
+    });
+
+    if (
+      typeof payload.customerId !== "number" ||
+      typeof payload.email !== "string" ||
+      typeof payload.name !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      customerId: payload.customerId,
+      email: payload.email,
+      name: payload.name,
+    };
+  } catch {
+    // Expired, malformed, or signed with a different secret.
+    return null;
+  }
+}

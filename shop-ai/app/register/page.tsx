@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Create account",
-  description: "Registration will be connected in a later ShopAI phase.",
+  description: "Create a ShopAI account to manage your orders and profile.",
 };
 
 export default function RegisterPage() {
@@ -13,7 +13,7 @@ export default function RegisterPage() {
       <PageHeader
         eyebrow="Account"
         title="Create account"
-        description="A placeholder form so the register route is ready for later identity work."
+        description="Create a ShopAI account to manage your orders and profile."
       />
       <div className="px-4 py-12 sm:px-6 sm:py-16">
         <AuthForm mode="register" />

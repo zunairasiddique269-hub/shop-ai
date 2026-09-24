@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Sign in",
-  description: "Account access will be connected in a later ShopAI phase.",
+  description: "Sign in to manage your ShopAI account and orders.",
 };
 
 export default function LoginPage() {
@@ -13,7 +13,7 @@ export default function LoginPage() {
       <PageHeader
         eyebrow="Account"
         title="Sign in"
-        description="This is a polished layout for a forthcoming authentication system."
+        description="Sign in to manage your ShopAI account and orders."
       />
       <div className="px-4 py-12 sm:px-6 sm:py-16">
         <AuthForm mode="login" />

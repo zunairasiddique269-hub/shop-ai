@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
 export function AuthForm({
@@ -8,11 +9,44 @@ export function AuthForm({
 }: {
   mode: "login" | "register";
 }) {
-  const [submitted, setSubmitted] = useState(false);
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    setIsSubmitting(true);
+
+    const url = mode === "login" ? "/api/customer/login" : "/api/customer/register";
+    const body =
+      mode === "login"
+        ? { email, password }
+        : { name, email, password };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (!response.ok) {
+        setError(data.error ?? "Something went wrong. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Couldn't reach the server. Check your connection and try again.");
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -28,7 +62,10 @@ export function AuthForm({
           id="email"
           type="email"
           required
-          className="mt-2 h-12 w-full rounded-full border border-mauve bg-cream px-4 text-sm outline-none focus:border-plum"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          disabled={isSubmitting}
+          className="mt-2 h-12 w-full rounded-full border border-mauve bg-cream px-4 text-sm outline-none focus:border-plum disabled:opacity-60"
         />
       </div>
       <div>
@@ -40,7 +77,10 @@ export function AuthForm({
           type="password"
           required
           minLength={8}
-          className="mt-2 h-12 w-full rounded-full border border-mauve bg-cream px-4 text-sm outline-none focus:border-plum"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          disabled={isSubmitting}
+          className="mt-2 h-12 w-full rounded-full border border-mauve bg-cream px-4 text-sm outline-none focus:border-plum disabled:opacity-60"
         />
       </div>
       {mode === "register" ? (
@@ -51,23 +91,23 @@ export function AuthForm({
           <input
             id="name"
             required
-            className="mt-2 h-12 w-full rounded-full border border-mauve bg-cream px-4 text-sm outline-none focus:border-plum"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            disabled={isSubmitting}
+            className="mt-2 h-12 w-full rounded-full border border-mauve bg-cream px-4 text-sm outline-none focus:border-plum disabled:opacity-60"
           />
         </div>
       ) : null}
-      <Button type="submit" className="w-full">
-        {mode === "login" ? "Sign in" : "Create account"}
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting
+          ? mode === "login"
+            ? "Signing in…"
+            : "Creating account…"
+          : mode === "login"
+            ? "Sign in"
+            : "Create account"}
       </Button>
-      {submitted ? (
-        <p className="text-sm text-muted">
-          Accounts are not connected yet. This screen is a layout placeholder
-          for a later authentication phase.
-        </p>
-      ) : (
-        <p className="text-sm text-muted">
-          Authentication will be implemented later. No credentials are stored.
-        </p>
-      )}
     </form>
   );
 }

@@ -3,7 +3,14 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
-import { ADMIN_SESSION_COOKIE, verifySessionToken, type AdminSessionPayload } from "./session";
+import {
+  ADMIN_SESSION_COOKIE,
+  CUSTOMER_SESSION_COOKIE,
+  verifySessionToken,
+  verifyCustomerSessionToken,
+  type AdminSessionPayload,
+  type CustomerSessionPayload,
+} from "./session";
 
 // Server-only Data Access Layer for admin auth, following the pattern in
 // Next.js's own App Router authentication guide (node_modules/next/dist/docs/
@@ -52,6 +59,50 @@ export async function requireAdminApi(): Promise<
     return {
       response: NextResponse.json(
         { error: "Not authenticated. Please log in to the admin dashboard." },
+        { status: 401 },
+      ),
+    };
+  }
+  return { session };
+}
+
+// --- Customer sessions ---
+//
+// Same architecture as the admin helpers above, kept fully separate: its
+// own cookie (CUSTOMER_SESSION_COOKIE), its own payload type
+// (CustomerSessionPayload), and its own verify function
+// (verifyCustomerSessionToken). A customer session can never satisfy
+// getAdminSession()/requireAdminSession(), and vice versa.
+
+export const getCustomerSession = cache(
+  async (): Promise<CustomerSessionPayload | null> => {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
+    if (!token) return null;
+    return verifyCustomerSessionToken(token);
+  },
+);
+
+// For Server Components / pages like /account: redirects to the customer
+// login page if there's no valid session, otherwise returns it.
+export async function requireCustomerSession(): Promise<CustomerSessionPayload> {
+  const session = await getCustomerSession();
+  if (!session) {
+    redirect("/login");
+  }
+  return session;
+}
+
+// For Route Handlers, mirroring requireAdminApi(): returns either the
+// verified customer session or a ready-to-return 401 JSON response.
+export async function requireCustomerApi(): Promise<
+  { session: CustomerSessionPayload } | { response: NextResponse }
+> {
+  const session = await getCustomerSession();
+  if (!session) {
+    return {
+      response: NextResponse.json(
+        { error: "Not authenticated. Please log in to your account." },
         { status: 401 },
       ),
     };
