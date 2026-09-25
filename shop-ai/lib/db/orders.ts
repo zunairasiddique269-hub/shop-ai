@@ -1,5 +1,5 @@
 import "server-only";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import { orderItems, orders } from "./schema";
 import type { Order, OrderStatus, PaymentMethod } from "../types";
@@ -23,6 +23,10 @@ export type CreateOrderInput = {
   subtotal: number;
   shipping: number;
   total: number;
+  // Set by the server (app/api/orders/route.ts) from the authenticated
+  // customer session — never trust a customerId supplied by the client.
+  // Left undefined/null for guest checkout, which must keep working.
+  customerId?: number | null;
 };
 
 function toOrder(
@@ -71,6 +75,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       .insert(orders)
       .values({
         orderNumber,
+        customerId: input.customerId ?? null,
         customerFullName: input.customer.fullName,
         customerEmail: input.customer.email,
         customerPhone: input.customer.phone,
@@ -120,6 +125,53 @@ export async function getOrderByNumber(orderNumber: string): Promise<Order | und
     .where(eq(orderItems.orderId, orderRow.id));
 
   return toOrder(orderRow, items);
+}
+
+// For a logged-in customer's own order-detail page (app/account/orders/
+// [orderNumber]/page.tsx). The ownership check (customerId match) happens
+// in the WHERE clause itself, not as an after-the-fetch check — so a
+// customer can never even retrieve another customer's row, let alone see
+// it. Deliberately separate from getOrderByNumber() above (used by the
+// public order-confirmation page right after checkout, guest or not) so
+// that flow's existing behavior is untouched.
+export async function getOrderByNumberForCustomer(
+  orderNumber: string,
+  customerId: number,
+): Promise<Order | undefined> {
+  const [orderRow] = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.orderNumber, orderNumber), eq(orders.customerId, customerId)))
+    .limit(1);
+
+  if (!orderRow) return undefined;
+
+  const items = await db
+    .select()
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderRow.id));
+
+  return toOrder(orderRow, items);
+}
+
+// For the customer's own order-history list on /account. Newest first,
+// same conversion logic as everything else here — no separate order shape.
+export async function getOrdersByCustomerId(customerId: number): Promise<Order[]> {
+  const orderRows = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.customerId, customerId))
+    .orderBy(desc(orders.createdAt));
+
+  const results: Order[] = [];
+  for (const orderRow of orderRows) {
+    const items = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.orderId, orderRow.id));
+    results.push(toOrder(orderRow, items));
+  }
+  return results;
 }
 
 // For the future Admin Dashboard order list.

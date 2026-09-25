@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createOrder, getAllOrders } from "@/lib/db/orders";
-import { requireAdminApi } from "@/lib/auth/dal";
+import { getCustomerSession, requireAdminApi } from "@/lib/auth/dal";
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -55,6 +55,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // Optional: guest checkout must keep working. getCustomerSession() returns
+  // null when there's no valid customer session cookie, in which case the
+  // order is simply saved with customerId: null, exactly as before this
+  // stage. The client never sends a customerId — it can't, since it's never
+  // read from `body` below.
+  const customerSession = await getCustomerSession();
+
   const order = await createOrder({
     customer: body.customer,
     shippingAddress: body.shippingAddress,
@@ -63,6 +70,7 @@ export async function POST(request: Request) {
     subtotal: body.subtotal,
     shipping: body.shipping,
     total: body.total,
+    customerId: customerSession?.customerId ?? null,
   });
 
   return NextResponse.json({ order }, { status: 201 });
