@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrderByNumber, updateOrderStatus } from "@/lib/db/orders";
 import { requireAdminApi } from "@/lib/auth/dal";
+import { sendOrderStatusUpdateEmail } from "@/lib/notifications/email";
 
 type Params = { params: Promise<{ orderNumber: string }> };
 
@@ -51,6 +52,14 @@ export async function PATCH(request: Request, { params }: Params) {
     );
   }
 
+  // Snapshot the order's state before updating, so we can tell whether this
+  // request actually changes anything worth emailing about — an admin
+  // re-saving the same status/tracking value shouldn't trigger a new email.
+  // This is the smallest safe way to detect a real change without
+  // redesigning trackingId editing's existing "undefined leaves it
+  // unchanged" behavior (see updateOrderStatus in lib/db/orders.ts).
+  const previousOrder = await getOrderByNumber(orderNumber);
+
   const order = await updateOrderStatus(
     orderNumber,
     body.status,
@@ -59,5 +68,21 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!order) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
+
+  const statusChanged = previousOrder ? previousOrder.status !== order.status : false;
+  const trackingChanged = previousOrder
+    ? (previousOrder.trackingId ?? "") !== (order.trackingId ?? "")
+    : false;
+
+  // Same rule as order creation: an email problem must never turn this
+  // successful database update into a failed request for the admin.
+  if (statusChanged || trackingChanged) {
+    try {
+      await sendOrderStatusUpdateEmail(order);
+    } catch (error) {
+      console.error("Order status update email failed", error);
+    }
+  }
+
   return NextResponse.json({ order });
 }

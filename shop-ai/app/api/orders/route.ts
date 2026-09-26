@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createOrder, getAllOrders } from "@/lib/db/orders";
 import { getCustomerSession, requireAdminApi } from "@/lib/auth/dal";
+import { sendOrderConfirmationEmail } from "@/lib/notifications/email";
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -72,6 +73,17 @@ export async function POST(request: Request) {
     total: body.total,
     customerId: customerSession?.customerId ?? null,
   });
+
+  // The order is already safely persisted at this point. An email problem
+  // (missing provider config, provider outage, etc.) must never turn this
+  // into a failed request — the customer keeps their order either way.
+  // The recipient always comes from the order's own customerEmail snapshot
+  // (order.customer.email below), never anything the browser could supply.
+  try {
+    await sendOrderConfirmationEmail(order);
+  } catch (error) {
+    console.error("Order confirmation email failed", error);
+  }
 
   return NextResponse.json({ order }, { status: 201 });
 }
