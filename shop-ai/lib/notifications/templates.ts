@@ -203,3 +203,63 @@ This is an automated message from Shop AI. Please do not reply directly to this 
 
   return { subject, html, text };
 }
+
+// --- WhatsApp message content ---
+//
+// Added for the WhatsApp notification feature. Reuses the same
+// formatOrderDate/formatAddress/PAYMENT_LABEL/STATUS_LABEL helpers above
+// rather than duplicating them in lib/notifications/whatsapp.ts, which only
+// knows about delivery (the HTTP call), never message wording — same split
+// as the email content above. WhatsApp messages are plain text (no HTML),
+// so these return a single string each. `*text*` is WhatsApp's own bold
+// formatting syntax, not markdown.
+
+export function buildOrderConfirmationWhatsAppMessage(order: Order): string {
+  const lines = [
+    `*Shop AI — Order Confirmed*`,
+    ``,
+    `Hi ${order.customer.fullName}, thanks for your order!`,
+    ``,
+    `*Order:* ${order.orderNumber}`,
+    `*Date:* ${formatOrderDate(order.createdAt)}`,
+    `*Status:* ${STATUS_LABEL[order.status]}`,
+  ];
+  if (order.trackingId) {
+    lines.push(`*Tracking ID:* ${order.trackingId}`);
+  }
+  lines.push(
+    `*Payment:* ${PAYMENT_LABEL[order.paymentMethod]}`,
+    `*Shipping to:* ${formatAddress(order)}`,
+    ``,
+    `*Items:*`,
+    ...order.items.map(
+      (item) => `- ${item.name} x${item.quantity} - ${formatPrice(item.price * item.quantity)}`,
+    ),
+    ``,
+    `*Total: ${formatPrice(order.total)}*`,
+    ``,
+    `This is an automated message from Shop AI.`,
+  );
+  return lines.join("\n");
+}
+
+export function buildOrderStatusUpdateWhatsAppMessage(order: Order): string {
+  const lines = [
+    `*Shop AI — Order Update*`,
+    ``,
+    `Hi ${order.customer.fullName}, there's an update on your order.`,
+    ``,
+    `*Order:* ${order.orderNumber}`,
+    `*Status:* ${STATUS_LABEL[order.status]}`,
+  ];
+  if (order.trackingId) {
+    lines.push(`*Tracking ID:* ${order.trackingId}`);
+  }
+  lines.push(
+    `*Order total:* ${formatPrice(order.total)}`,
+    `*Shipping to:* ${formatAddress(order)}`,
+    ``,
+    `This is an automated message from Shop AI.`,
+  );
+  return lines.join("\n");
+}

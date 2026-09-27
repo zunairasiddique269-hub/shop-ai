@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createOrder, getAllOrders } from "@/lib/db/orders";
 import { getCustomerSession, requireAdminApi } from "@/lib/auth/dal";
 import { sendOrderConfirmationEmail } from "@/lib/notifications/email";
+import { sendOrderConfirmationWhatsApp } from "@/lib/notifications/whatsapp";
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -74,15 +75,22 @@ export async function POST(request: Request) {
     customerId: customerSession?.customerId ?? null,
   });
 
-  // The order is already safely persisted at this point. An email problem
-  // (missing provider config, provider outage, etc.) must never turn this
-  // into a failed request — the customer keeps their order either way.
-  // The recipient always comes from the order's own customerEmail snapshot
-  // (order.customer.email below), never anything the browser could supply.
+  // The order is already safely persisted at this point. A notification
+  // problem (missing provider config, provider outage, etc.) must never
+  // turn this into a failed request — the customer keeps their order
+  // either way. The recipient always comes from the order's own
+  // customerEmail/customerPhone snapshot, never anything the browser could
+  // supply. Email and WhatsApp are independent: one failing never skips or
+  // affects the other.
   try {
     await sendOrderConfirmationEmail(order);
   } catch (error) {
     console.error("Order confirmation email failed", error);
+  }
+  try {
+    await sendOrderConfirmationWhatsApp(order);
+  } catch (error) {
+    console.error("Order confirmation WhatsApp message failed", error);
   }
 
   return NextResponse.json({ order }, { status: 201 });
